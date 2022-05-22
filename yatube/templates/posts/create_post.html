@@ -21,9 +21,9 @@
             </div>
             <div class="card-body">        
                 {% if is_edit %}
-                  <form method="post" action="{% url 'posts:post_edit' post.pk %}">
+                  <form method="post" enctype="multipart/form-data" action="{% url 'posts:post_edit' post.pk %}">
                 {% else %}
-                  <form method="post" action="{% url 'posts:post_create' %}">
+                  <form method="post" enctype="multipart/form-data" action="{% url 'posts:post_create' %}">
                 {% endif %}              
                 {% csrf_token %}
                 {% for field in form %}           

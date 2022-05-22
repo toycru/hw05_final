@@ -7,7 +7,7 @@ class PostForm(forms.ModelForm):
         # укажем модель, с которой связана создаваемая форма
         model = Post
         # укажем, какие поля должны быть видны в форме и в каком порядке
-        fields = ('text', 'group')
+        fields = ('group', 'text', 'image')
         labels = {
             # Переназначено в /models.py
             # 'text': 'Текст поста',

@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from posts.models import Post, Group
 from django.urls import reverse
@@ -35,10 +36,24 @@ class PostsCreateFormTests(TestCase):
         """Форма создает запись в БД и вполняет редирект."""
         # количество записей
         posts_count = Post.objects.count()
+        # Подготавливаем данные для передачи в форму
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         # данные для передачи в форму
         form_data = {
             'text': 'Тестовый текст',
             'group': self.group.id,
+            'image': uploaded,
         }
         response = self.authorized_client.post(
             reverse('posts:post_create'),
@@ -49,6 +64,14 @@ class PostsCreateFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:profile', kwargs={'username': 'test_forms_user'}
         ))
+        # Проверяем, что создалась запись с нашим слагом
+        self.assertTrue(
+            Post.objects.filter(
+                text='Тестовый текст',
+                # image='/media/posts/small.gif',
+                # group=self.group.id,
+            ).exists()
+        )
         # Проверяем, увеличилось ли число постов
         self.assertEqual(Post.objects.count(), posts_count + 1)
         # Последний добавленный пост действительно последний созданный в БД,
