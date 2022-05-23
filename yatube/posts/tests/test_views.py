@@ -1,11 +1,17 @@
+import shutil
+import tempfile
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import TestCase, Client
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from posts.models import Post, Group
 from django import forms
 User = get_user_model()
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -17,11 +23,30 @@ class PostPagesTests(TestCase):
             description='Тестовый текст',
             slug='test-group-slug',
         )
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         cls.post = Post.objects.create(
             author=cls.user,
             text='Текст тестовой записи',
-            group=cls.group
+            group=cls.group,
+            image=cls.uploaded
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        # Метод shutil.rmtree удаляет директорию и всё её содержимое
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         # Создаём авторизованный клиент
@@ -55,17 +80,13 @@ class PostPagesTests(TestCase):
                 response = self.authorized_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
 
-    def get_response_post(self, namespase, kwargs=None):
-        """Получает из контекста объект для страницы"""
-        response = self.authorized_client.get(reverse(namespase, kwargs))
-        return response.context['page_obj']
-
     def test_home_page_context(self):
         """Поля словаря контекстов главной страницы posts:index"""
         response = self.authorized_client.get(reverse('posts:index'))
         response_post = response.context['page_obj'][0]
         self.assertEqual(response_post.text, 'Текст тестовой записи')
         self.assertEqual(response_post.author.username, 'testuser')
+        self.assertEqual(response_post.image, self.post.image)
 
     def test_group_list_context(self):
         """Поля словаря контекстов списка постов по группе posts:group_list"""
@@ -77,6 +98,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(response_group.title, 'Тестовый заголовок группы')
         self.assertEqual(response_post.text, 'Текст тестовой записи')
         self.assertEqual(response_post.author.username, 'testuser')
+        self.assertEqual(response_post.image, self.post.image)
 
     def test_profile_context(self):
         """Поля словаря контекстов списка постов по пользователю
@@ -91,6 +113,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(response_count_posts, 1)
         self.assertEqual(response_post.text, 'Текст тестовой записи')
         self.assertEqual(response_post.author.username, 'testuser')
+        self.assertEqual(response_post.image, self.post.image)
 
     def test_post_detail_context(self):
         """Поля словаря контекстов поста по id posts:post_detail"""
@@ -102,6 +125,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(response_count_posts, 1)
         self.assertEqual(response_post.text, 'Текст тестовой записи')
         self.assertEqual(response_post.author.username, 'testuser')
+        self.assertEqual(response_post.image, self.post.image)
 
     def test_post_create_show_correct_context_type(self):
         """Типы данных в форме шаблона post_create соответствуют контекстом."""
@@ -111,6 +135,7 @@ class PostPagesTests(TestCase):
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField
         }
         # Проверяем, что типы полей формы в словаре context
         for value, expected in form_fields.items():
@@ -128,6 +153,7 @@ class PostPagesTests(TestCase):
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField
         }
         # Проверяем, что типы полей формы в словаре context
         for value, expected in form_fields.items():

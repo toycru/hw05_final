@@ -1,11 +1,16 @@
+import shutil
+import tempfile
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from posts.models import Post, Group
 from django.urls import reverse
 User = get_user_model()
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostsCreateFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -26,6 +31,12 @@ class PostsCreateFormTests(TestCase):
             text='Текст тестовой записи',
             group=cls.group
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        # Метод shutil.rmtree удаляет директорию и всё её содержимое
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         # Создаём авторизованный клиент
@@ -64,12 +75,12 @@ class PostsCreateFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:profile', kwargs={'username': 'test_forms_user'}
         ))
-        # Проверяем, что создалась запись с нашим слагом
+        # Проверяем, что создалась запись с рисунком
         self.assertTrue(
             Post.objects.filter(
                 text='Тестовый текст',
-                # image='/media/posts/small.gif',
-                # group=self.group.id,
+                image='posts/small.gif',
+                group=self.group.id,
             ).exists()
         )
         # Проверяем, увеличилось ли число постов
@@ -81,9 +92,22 @@ class PostsCreateFormTests(TestCase):
     def test_edit_post(self):
         """Форма редактирует запись в БД и вполняет редирект."""
         # Подготавливаем данные для передачи в форму
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small1.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         form_data = {
             'text': 'Отредактированный тестовый текст',
             'group': self.other_group.id,
+            'image': uploaded,
         }
         last_post = Post.objects.last()
         response = self.authorized_client.post(
@@ -97,3 +121,11 @@ class PostsCreateFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:post_detail', kwargs={'post_id': last_post.id}
         ))
+        # Проверяем, что создалась запись с рисунком
+        self.assertTrue(
+            Post.objects.filter(
+                text='Отредактированный тестовый текст',
+                image='posts/small1.gif',
+                group=self.other_group.id,
+            ).exists()
+        )
