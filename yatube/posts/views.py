@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render, get_object_or_404
-from .models import Post, Group
-from .forms import PostForm
+from .models import Post, Group, Comment
+from .forms import PostForm, CommentForm
 from .paginator import make_paginator
 User = get_user_model()
 
@@ -46,9 +46,13 @@ def post_detail(request, post_id):
     """View-функция для отображения одной записи"""
     post = get_object_or_404(Post, pk=post_id)
     count_posts = post.author.posts.count()
+    comments = Comment.objects.filter(post=post)
+    form = CommentForm(request.POST or None)
     context = {
         'post': post,
         'count_posts': count_posts,
+        'form': form,
+        'comments': comments,
     }
     return render(request, 'posts/post_detail.html', context)
 
@@ -95,12 +99,11 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
-    # Получите пост
-    """form = CommentForm(request.POST or None)
+    post = get_object_or_404(Post, pk=post_id)
+    form = CommentForm(request.POST or None)
     if form.is_valid():
         comment = form.save(commit=False)
         comment.author = request.user
         comment.post = post
         comment.save()
-    return redirect('posts:post_detail', post_id=post_id) """
-    pass
+    return redirect('posts:post_detail', post_id=post_id)

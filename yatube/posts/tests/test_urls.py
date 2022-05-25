@@ -30,12 +30,14 @@ class StaticURLTests(TestCase):
         # авторизация тестового пользователя
         self.authorized_client.force_login(self.user)
 
-    def test_homepage(self):
+    def test_homepage_availability(self):
+        """Доступность главной страницы"""
         response = self.guest_client.get('/')
         # Утверждаем, что для прохождения теста код должен быть равен 200
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
-    def test_unexisting_page(self):
+    def test_unexisting_page_unavailability(self):
+        """Переход на стр.404 при переход на несуществующую страницу"""
         response = self.guest_client.get('/unexisting_page')
         # Утверждаем, что для прохождения теста код должен быть равен 404
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
@@ -54,3 +56,10 @@ class StaticURLTests(TestCase):
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
                 self.assertTemplateUsed(response, template)
+
+    def test_add_comment_unavailability(self):
+        """Недоступность добавления комментариев неавторизованному"""
+        response = self.guest_client.get(
+            f'/posts/{self.post.id}/comment/'
+        )
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)

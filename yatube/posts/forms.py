@@ -1,5 +1,5 @@
 from django import forms
-from .models import Post
+from .models import Post, Comment
 
 
 class PostForm(forms.ModelForm):
@@ -8,12 +8,9 @@ class PostForm(forms.ModelForm):
         model = Post
         # укажем, какие поля должны быть видны в форме и в каком порядке
         fields = ('group', 'text', 'image')
-        labels = {
-            # Переназначено в /models.py
-            # 'text': 'Текст поста',
-            # 'group': 'Группа',
-        }
-        help_texts = {
-            # 'text': 'Текст нового поста',
-            # 'group': 'Группа, к которой будет относиться пост',
-        }
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ('text',)

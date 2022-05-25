@@ -4,7 +4,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client, override_settings
-from posts.models import Post, Group
+from http import HTTPStatus
+from posts.models import Post, Group, Comment
 from django.urls import reverse
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -129,3 +130,35 @@ class PostsCreateFormTests(TestCase):
                 group=self.other_group.id,
             ).exists()
         )
+
+    def test_add_comment(self):
+        """После успешной отправки комментарий появляется на странице поста."""
+        # количество комментариев изначально
+        comment_count = Comment.objects.count()
+        # данные для передачи в форму
+        form_data = {
+            'text': 'Тестовый комментарий',
+            'post': self.one_post,
+        }
+        response = self.authorized_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.one_post.id}),
+            data=form_data,
+            follow=True
+        )
+        # Проверяем, сработал ли редирект
+        self.assertRedirects(response, reverse(
+            'posts:post_detail', kwargs={'post_id': self.one_post.id}
+        ))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        # Комментарий добавлен в БД
+        self.assertTrue(
+            Comment.objects.filter(
+                text='Тестовый комментарий',
+            ).exists()
+        )
+        # Проверяем, увеличилось ли число комментариев
+        self.assertEqual(Comment.objects.count(), comment_count + 1)
+        response_context = self.authorized_client.get(
+            reverse('posts:post_detail', kwargs={'post_id': 1})
+        ).context['comments'][0]
+        self.assertEqual(response_context.text, 'Тестовый комментарий')
