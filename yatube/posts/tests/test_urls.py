@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, Client
 from http import HTTPStatus
 from posts.models import Post, Group
@@ -29,6 +30,7 @@ class StaticURLTests(TestCase):
         self.authorized_client = Client()
         # авторизация тестового пользователя
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_homepage_availability(self):
         """Доступность главной страницы"""

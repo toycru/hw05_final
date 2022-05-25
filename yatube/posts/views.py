@@ -1,12 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render, get_object_or_404
+from django.views.decorators.cache import cache_page
 from .models import Post, Group, Comment
 from .forms import PostForm, CommentForm
 from .paginator import make_paginator
 User = get_user_model()
 
 
+@cache_page(20)
 def index(request):
     post_list = Post.objects.all()
     page_obj = make_paginator(request, post_list)

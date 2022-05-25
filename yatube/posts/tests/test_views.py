@@ -3,6 +3,7 @@ import tempfile
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from posts.models import Post, Group
@@ -52,6 +53,7 @@ class PostPagesTests(TestCase):
         # Создаём авторизованный клиент
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     # Проверяем используемые шаблоны
     def test_pages_uses_correct_template(self):
@@ -173,6 +175,19 @@ class PostPagesTests(TestCase):
         self.assertEqual(response_post.text, 'Текст тестовой записи')
         self.assertEqual(response_post.author.username, 'testuser')
 
+    def test_post_cashing_index_page(self):
+        """Главная страница кешируется"""
+        post = self.post
+        response = self.authorized_client.get(reverse('posts:index'))
+        count_before_delete_post = len(response.context.get('page_obj'))
+        post.delete()
+        count_after_delete_post = len(response.context.get('page_obj'))
+        self.assertEqual(count_before_delete_post, count_after_delete_post)
+        cache.clear()
+        response = self.authorized_client.get(reverse('posts:index'))
+        count_after_clear_cash = len(response.context.get('page_obj'))
+        self.assertEqual(count_before_delete_post, count_after_clear_cash + 1)
+
 
 class CreatePostTests(TestCase):
     @classmethod
@@ -204,6 +219,7 @@ class CreatePostTests(TestCase):
             data=form_data,
             follow=True
         )
+        cache.clear()
 
     def test_post_in_home_page(self):
         """Пост при создании попал на главную страницу"""
