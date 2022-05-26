@@ -6,8 +6,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
-from posts.models import Post, Group
+from posts.models import Post, Group, Follow
 from django import forms
+
 User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -108,7 +109,7 @@ class PostPagesTests(TestCase):
         response = self.authorized_client.get(
             reverse('posts:profile', kwargs={'username': 'testuser'})
         )
-        response_username = response.context['username']
+        response_username = response.context['author']
         response_count_posts = response.context['count_posts']
         response_post = response.context['page_obj'][0]
         self.assertEqual(response_username.username, 'testuser')
@@ -264,3 +265,94 @@ class CreatePostTests(TestCase):
             response_group_list_post.text,
             'Тестовый текст для главной страницы'
         )
+
+
+class FollowTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='testuser')
+        cls.another_user = User.objects.create_user(username='anotheruser')
+        cls.author = User.objects.create_user(username='testauthor')
+        cls.group = Group.objects.create(
+            title='Тестовый заголовок группы',
+            description='Тестовый текст',
+            slug='test-group-slug',
+        )
+        cls.post = Post.objects.create(
+            author=cls.author,
+            text='Текст тестовой записи автора',
+            group=cls.group,
+        )
+        cls.post_of_user = Post.objects.create(
+            author=cls.user,
+            text='Текст тестовой записи пользователя',
+            group=cls.group,
+        )
+
+    def setUp(self):
+        # Создание авторизованного клиента
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        cache.clear()
+
+    def test_auth_user_can_follow_and_unfollow(self):
+        """Авторизованный пользователь может подписываться на других
+        пользователей и удалять их из подписок, редиректы верные"""
+        count_follow_before_follow = Follow.objects.count()
+        response = self.authorized_client.get(
+            reverse(
+                'posts:profile_follow',
+                args={'testauthor'}
+            )
+        )
+        count_follow_after_follow = Follow.objects.count()
+        self.assertRedirects(response, reverse(
+            'posts:profile', kwargs={'username': 'testauthor'}
+        ))
+        self.assertEqual(
+            count_follow_before_follow + 1,
+            count_follow_after_follow
+        )
+        response = self.authorized_client.get(
+            reverse(
+                'posts:profile_unfollow',
+                args={'testauthor'}
+            )
+        )
+        count_follow_after_unfollow = Follow.objects.count()
+        self.assertRedirects(response, reverse(
+            'posts:profile', kwargs={'username': 'testauthor'}
+        ))
+        self.assertEqual(
+            count_follow_after_follow - 1,
+            count_follow_after_unfollow
+        )
+
+    def test_subscribe_to_yourself(self):
+        """Нельзя подписаться на себя"""
+        count_follow_before_follow = Follow.objects.count()
+        self.authorized_client.get(
+            reverse(
+                'posts:profile_follow',
+                args={'testuser'}
+            )
+        )
+        count_follow_after_follow = Follow.objects.count()
+        self.assertEqual(count_follow_before_follow, count_follow_after_follow)
+
+    def test_post_in_follow(self):
+        """Новая запись пользователя появляется в ленте тех, кто на него
+        подписан и не появляется в ленте тех, кто не подписан."""
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        count_before_follow = len(response.context.get('page_obj'))
+        Follow.objects.get_or_create(user=self.user, author=self.author)
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        count_after_follow = len(response.context.get('page_obj'))
+        self.assertEqual(count_before_follow + 1, count_after_follow)
+        cache.clear()
+        self.authorized_client.force_login(self.another_user)
+        response = self.authorized_client.get(reverse('posts:follow_index'))
+        count_posts_in_unfollow_user = len(response.context.get('page_obj'))
+        self.assertEqual(count_posts_in_unfollow_user, 0)
+        cache.clear()

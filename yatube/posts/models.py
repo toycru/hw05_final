@@ -82,3 +82,28 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+        verbose_name='подписчик'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+        verbose_name='Автор'
+    )
+
+    def __str__(self):
+        return f'Подписка {self.user.username} на {self.author.username}'
+
+    class Meta:
+        ordering = ['author']
+        verbose_name = 'подписки'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'author'], name='follow')
+        ]
