@@ -37,8 +37,11 @@ def profile(request, username):
     count_posts = user_posts.count()
     page_obj = make_paginator(request, user_posts)
     # подписки
-    if Follow.objects.filter(user=request.user, author=author).exists():
-        following = True
+    if request.user.is_authenticated:
+        following = Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).exists()
     else:
         following = False
     if author == request.user:
@@ -124,13 +127,13 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    # информация о текущем пользователе доступна в переменной request.user
+    """Вывод избранных записей"""
     user = request.user
     authors = user.follower.values_list('id', flat=True)
     post_list = Post.objects.filter(author_id__in=authors)
     page_obj = make_paginator(request, post_list)
     context = {
-        'page_obj': page_obj,
+        'page_obj': page_obj
     }
     return render(request, 'posts/follow.html', context)
 
