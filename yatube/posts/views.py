@@ -12,6 +12,7 @@ User = get_user_model()
 def index(request):
     post_list = Post.objects.all()
     page_obj = make_paginator(request, post_list)
+    print(f'список объявлений на странице {post_list.count()}')
     context = {
         'page_obj': page_obj,
     }
@@ -129,11 +130,10 @@ def add_comment(request, post_id):
 def follow_index(request):
     """Вывод избранных записей"""
     user = request.user
-    authors = user.follower.values_list('id', flat=True)
-    post_list = Post.objects.filter(author_id__in=authors)
+    post_list = Post.objects.filter(author__following__user=user)
     page_obj = make_paginator(request, post_list)
     context = {
-        'page_obj': page_obj
+        'page_obj': page_obj,
     }
     return render(request, 'posts/follow.html', context)
 
