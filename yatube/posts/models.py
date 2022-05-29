@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
 CHARECTERS_IN_POSTS_STR = 15
@@ -105,5 +105,10 @@ class Follow(models.Model):
         ordering = ['author']
         verbose_name = 'подписки'
         constraints = [
-            models.UniqueConstraint(fields=['user', 'author'], name='follow')
+            models.UniqueConstraint(fields=['user', 'author'], name='follow'),
+            models.CheckConstraint(
+                name="author_not_user",
+                # check=~models.F('user')
+                check=models.Q(user__neq=models.F('author'))
+            )
         ]

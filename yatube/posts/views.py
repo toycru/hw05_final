@@ -1,10 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
-from .models import Post, Group, Comment, Follow
-from .forms import PostForm, CommentForm
+
+from .forms import CommentForm, PostForm
+from .models import Comment, Follow, Group, Post
 from .paginator import make_paginator
+
 User = get_user_model()
 
 
@@ -12,7 +14,6 @@ User = get_user_model()
 def index(request):
     post_list = Post.objects.all()
     page_obj = make_paginator(request, post_list)
-    print(f'список объявлений на странице {post_list.count()}')
     context = {
         'page_obj': page_obj,
     }

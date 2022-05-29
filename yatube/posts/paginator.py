@@ -1,4 +1,5 @@
 from django.core.paginator import Paginator
+
 NUMBER_OF_POSTS_PER_PAGE = 10
 
 
