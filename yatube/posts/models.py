@@ -108,7 +108,8 @@ class Follow(models.Model):
             models.UniqueConstraint(fields=['user', 'author'], name='follow'),
             models.CheckConstraint(
                 name="author_not_user",
-                # check=~models.F('user')
-                check=models.Q(user__neq=models.F('author'))
+                # был вариант с neq
+                # check=models.Q(user__neq=models.F('author'))
+                check=~models.Q(user=models.F('author'))
             )
         ]

@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 't-hi73(a$y+-iq3ag2bny^#7ov82=h(8uuf4y0ko&exavwomz-'
+SECRET_KEY = os.getenv('SECRET_KEY', default='t-hi73(a$y+-iq3ag2bny^#7ov82=h(8uuf4y0ko&exavwomz-')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = False
@@ -31,6 +31,10 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '[::1]',
     'testserver',
+]
+
+INTERNAL_IPS = [
+    '127.0.0.1',
 ]
 
 
@@ -48,6 +52,8 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'about.apps.AboutConfig',
     'sorl.thumbnail',
+    # Приложение staticfiles необходимо для работы приложения DjDT
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'yatube.urls'
